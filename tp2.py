@@ -4,6 +4,7 @@ import cv2
 import matplotlib.pyplot as plt
 import networkx as nx
 from sklearn.mixture import GaussianMixture
+from networkx.drawing.nx_agraph import graphviz_layout
 
 
 def loadImages(dir):
@@ -73,8 +74,34 @@ def plot_binary_images(binary_images, output_path):
 
     for i, binary_image in enumerate(binary_images, 1):
         plt.subplot(rows, cols, i)
-        plt.imshow(binary_image, cmap="gray")
+        plt.imshow(binary_image, cmap="gray", interpolation="nearest")
+        plt.colorbar(label="Valeurs")
         plt.title(f"Binary Image {i}")
+
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.show()
+
+
+def plot_region_images(region_images, output_path):
+    """
+    Affiche et sauvegarde une figure contenant les images
+
+    :param region_images: array d'images.
+    :param output_path: path pour sauvegarder la figure.
+    """
+
+    num_images = len(region_images)
+    rows = (num_images + 1) // 3  # Number of rows for subplots
+    cols = 3  # Two columns per row
+
+    plt.figure(figsize=(12, 8))
+
+    for i, region_image in enumerate(region_images, 1):
+        plt.subplot(rows, cols, i)
+        plt.imshow(region_image, cmap="viridis", interpolation="nearest")
+        plt.colorbar(label="Valeurs")
+        plt.title(f"Region Image {i}")
 
     plt.tight_layout()
     plt.savefig(output_path)
@@ -96,26 +123,39 @@ def plot_trees(trees, output_path):
     plt.figure(figsize=(15, 10))
 
     for i, tree in enumerate(trees, 1):
-        # Apply your diffusion filling algorithm here
-        G = nx.DiGraph()
-        for node, parent in tree.items():
-            G.add_node(node)
-            if parent != -1:
-                G.add_edge(parent, node)
-
         plt.subplot(rows, cols, i)
-        pos = nx.spring_layout(G)
+
+        G = nx.DiGraph()
+
+        for region_id, region in tree.items():
+            G.add_node(
+                region_id, color=region.color
+            )  # Ajouter un nœud pour chaque région
+
+            if region.parent is not None:
+                G.add_edge(
+                    region.parent, region_id
+                )  # Ajouter une arête du parent à l'enfant
+
+        pos = graphviz_layout(G, prog="dot")
+
+        node_colors = [
+            "black" if region.color == 0 else "white"
+            for region_id, region in tree.items()
+        ]
 
         nx.draw(
             G,
             pos,
-            with_labels=True,
-            font_weight="bold",
-            node_size=700,
-            node_color="skyblue",
-            font_color="black",
-            arrowsize=20,
+            node_color=node_colors,
+            with_labels=False,
+            edgecolors="black",
+            linewidths=2,
         )
+
+        labels = {region_id: region_id for region_id in tree.keys()}
+
+        nx.draw_networkx_labels(G, pos, labels=labels, font_color="aqua")
 
         plt.title(f"Adjacency Tree for Image {i}")
 
@@ -135,10 +175,25 @@ def plot_tree(tree, output_path):
                 region.parent, region_id
             )  # Ajouter une arête du parent à l'enfant
 
-    pos = nx.spring_layout(G)  # Ajuster la disposition des nœuds
+    pos = graphviz_layout(G, prog="dot")
 
-    node_colors = [region.color for region_id, region in tree.items()]
-    nx.draw(G, pos, node_color=node_colors, with_labels=True)
+    node_colors = [
+        "black" if region.color == 0 else "white" for region_id, region in tree.items()
+    ]
+
+    nx.draw(
+        G,
+        pos,
+        node_color=node_colors,
+        with_labels=False,
+        edgecolors="black",
+        linewidths=2,
+    )
+
+    labels = {region_id: region_id for region_id in tree.keys()}
+
+    nx.draw_networkx_labels(G, pos, labels=labels, font_color="aqua")
+
     plt.show()
 
 
@@ -185,7 +240,14 @@ class PixelRegion:
 
 
 def flood_fill(
-    image, start_x, start_y, current_color, region, visited_color, adjacency_tree
+    image,
+    start_x,
+    start_y,
+    current_color,
+    region,
+    visited_color,
+    adjacency_tree,
+    image_regions,
 ):
     """
     Remplit une région dans une image en utilisant la méthode de remplissage par pile.
@@ -197,6 +259,7 @@ def flood_fill(
     :param region: Identifiant de la région en cours de remplissage.
     :param border_color: Couleur qui marque la frontière de la région.
     :param adjacency_tree: Arbre d'adjacence pour enregistrer les relations entre les régions.
+    :param image_regions: Matrice représentant les régions (pour visualisation).
     """
 
     stack = [(start_x, start_y)]
@@ -212,11 +275,13 @@ def flood_fill(
         # Vérifier si le pixel est déjà visité
         if image[x, y] == visited_color:
             if region != 1:
-                if adjacency_tree[region].parent == None:
-                    # Mettre à jour la relation parent-enfant si le pixel est déjà visité
-                    parent_region = region_at_pixel(x, y, adjacency_tree)
-                    # adjacency_tree[parent_region].children.append(region)
-                    adjacency_tree[region].parent = parent_region
+                if region == 2:
+                    adjacency_tree[region].parent = 1
+                else:
+                    if adjacency_tree[region].parent == None:
+                        # Mettre à jour la relation parent-enfant si le pixel est déjà visité
+                        parent_region = region_at_pixel(x, y, adjacency_tree)
+                        adjacency_tree[region].parent = parent_region
             continue
 
         # Ignorer les pixels qui ne sont pas de la couleur actuelle
@@ -225,10 +290,11 @@ def flood_fill(
 
         # Marquer le pixel comme visité
         image[x, y] = np.int_(-1)
+        image_regions[x, y] = region
 
         # Ajouter le pixel
         cpt += 1
-        if cpt % 100000 == 0:
+        if cpt % 1000000 == 0:
             print(cpt)
         adjacency_tree[region].add_pixel([x, y])
 
@@ -250,8 +316,7 @@ def build_adjacency_tree(image):
     adjacency_tree = {}
     region_counter = 1
 
-    print_frequency = 10
-    pixel_cpt = 0
+    image_regions = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
 
     for i in range(image.shape[0]):
         for j in range(image.shape[1]):
@@ -260,18 +325,21 @@ def build_adjacency_tree(image):
                 adjacency_tree[region_counter] = PixelRegion(image[i, j])
 
                 # remplissage de la région
-                flood_fill(image, i, j, image[i, j], region_counter, -1, adjacency_tree)
+                flood_fill(
+                    image,
+                    i,
+                    j,
+                    image[i, j],
+                    region_counter,
+                    -1,
+                    adjacency_tree,
+                    image_regions,
+                )
 
                 # fin de la région actuelle
                 region_counter += 1
 
-            # pixel_cpt += 1
-            # if pixel_cpt % print_frequency == 0:
-            #     print(
-            #         f"Pixels traités jusqu'à ({i}, {j}). Région actuelle : {region_counter}"
-            #     )
-
-    return adjacency_tree
+    return adjacency_tree, image_regions
 
 
 def region_at_pixel(x, y, adjacency_tree):
@@ -283,7 +351,7 @@ def region_at_pixel(x, y, adjacency_tree):
     :param adjacency_tree: Arbre d'adjacence contenant les régions.
     :return: Identifiant de la région à laquelle appartient le pixel.
     """
-    print("ici")
+
     for region_id, pixel_region in adjacency_tree.items():
         if [x, y] in pixel_region.pixels:
             return region_id
@@ -291,14 +359,16 @@ def region_at_pixel(x, y, adjacency_tree):
     return None
 
 
-def detect_markers(image):
-    # Implementation for marker detection
-    # Your code here
-    pass
-
-
 def remove_small_regions(img, min_size):
+    """
+    Retourne une image dont on a enlevé les zones isolées.
+
+    :param image: Matrice représentant l'image.
+    :param min_size: threshold de la grandeur des zones à conserver
+    """
+
     img = img.astype(np.uint8)
+
     # Effectuer une ouverture (érosion suivie de dilatation)
     kernel = np.ones((3, 3), np.uint64)
     img_opened = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
@@ -315,7 +385,15 @@ def remove_small_regions(img, min_size):
         if valid_regions[label]:
             img_result[labels == label] = 1
 
+    img_result = img_result.astype(np.int64)
+
     return img_result
+
+
+def detect_markers(image):
+    # Implementation for marker detection
+    # Your code here
+    pass
 
 
 def main():
@@ -340,71 +418,64 @@ def main():
     img_librairie = loadImages(librairie_dir)
     print("Librairie images are loaded")
 
-    # plotImages(
-    #     img_detection,
-    #     img_librairie,
-    #     output_dir,
-    # )
+    plotImages(
+        img_detection,
+        img_librairie,
+        output_dir,
+    )
 
     print("Loading done")
 
     # Segment the library images into two classes by mixing Gaussians
     print("----------------- SEGMENTATION OF LIBRARY IMAGES -----------------")
 
-    # binary_images = []
-    # for i, image in enumerate(img_librairie):
-    #     binary_image = gaussian_mixture_segmentation(image)
-    #     binary_images.append(binary_image)
-    #     print(f"Segmentation of image {i} done")
+    binary_images = []
+    for i, image in enumerate(img_librairie):
+        binary_image = gaussian_mixture_segmentation(image)
+        processed_img = remove_small_regions(binary_image, 100)
+        binary_images.append(processed_img)
+        print(f"Segmentation of image {i} done")
 
-    # plot_binary_images(
-    #     binary_images, os.path.join(output_dir, "binary_images_combined.png")
-    # )
+    plot_binary_images(
+        binary_images, os.path.join(output_dir, "combined_binary_images.png")
+    )
 
-    print(img_librairie[0].shape[0])
-    print(img_librairie[0].shape[1])
-    binary_image = gaussian_mixture_segmentation(img_librairie[1])
-    processed_img = remove_small_regions(binary_image, 50)
+    # pour en faire 1 à la fois
 
-    print(processed_img.shape[0])
-    print(processed_img.shape[1])
+    # binary_image = gaussian_mixture_segmentation(img_librairie[1])
+    # processed_img = remove_small_regions(binary_image, 50)
 
-    plt.figure(figsize=(8, 4))
-
-    plt.subplot(1, 2, 1)
-    plt.imshow(binary_image, cmap="gray")
-    plt.title("Image Originale")
-    plt.axis("off")
-
-    plt.subplot(1, 2, 2)
-    plt.imshow(processed_img, cmap="gray")
-    plt.title("Image Traitée")
-    plt.axis("off")
-
-    plt.show()
+    # plt.imshow(processed_img, cmap="gray", interpolation="nearest")
+    # plt.colorbar(label="Valeurs")
+    # plt.title("Visualisation du tableau 2D")
+    # plt.show()
 
     # create the topological representation of the five library markers
     print("----------------- LIBRARY TOPOLOGY -----------------")
 
-    # adjacency_trees = []
-    # for i, image in enumerate(binary_images):
-    #     adjacency_trees.append(build_adjacency_tree(image))
-    #     print(f"Adjacency tree of image {i} done")
+    adjacency_trees = []
+    regions_images = []
 
-    # binary_image = np.array(
-    #     [
-    #         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    #         [1, 0, 0, 0, 1, 1, 0, 0, 0, 1],
-    #         [1, 0, 1, 0, 1, 1, 0, 1, 0, 1],
-    #         [1, 0, 0, 0, 1, 1, 0, 0, 0, 1],
-    #         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    #     ]
-    # )
+    for i, image in enumerate(binary_images):
+        adjacency_tree, image_region = build_adjacency_tree(processed_img)
+        adjacency_trees.append(adjacency_tree)
+        regions_images.append(image_region)
+        print(f"Adjacency tree of image {i} done")
 
-    adjacency_tree = build_adjacency_tree(binary_image)
-    print(adjacency_tree)
+    plot_region_images(adjacency_tree, os.path.join(output_dir, "combined_regions.png"))
+    plot_trees(adjacency_trees, os.path.join(output_dir, "combined_trees.png"))
 
-    plot_tree(adjacency_tree, os.path.join(output_dir, "combined_trees.png"))
+    # pour en faire 1 a la fois
+
+    # adjacency_tree, image_test = build_adjacency_tree(processed_img)
+    # print(adjacency_tree)
+
+    # plt.imshow(image_test, cmap="viridis", interpolation="nearest")
+    # plt.colorbar(label="Valeurs")
+    # plt.title("Visualisation du tableau 2D")
+    # plt.show()
+
+    # plot_tree(adjacency_tree, os.path.join(output_dir, "combined_trees.png"))
 
     # segment the detection images acquired by mixing Gaussians into two classes
     print("----------------- SEGMENTATION OF DETECTION IMAGES -----------------")
