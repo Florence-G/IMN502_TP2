@@ -12,7 +12,9 @@ def loadImages(dir):
     Load toutes les images jpeg d'un directory dans un array
 
     :param dir: path du directory.
+    test
     """
+
     images_array = []
     for filename in sorted(os.listdir(dir), reverse=True):
         img_path = os.path.join(dir, filename)
