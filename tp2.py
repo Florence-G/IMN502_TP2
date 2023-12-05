@@ -359,13 +359,13 @@ def region_at_pixel(x, y, adjacency_tree):
 
     return None
 
-
-def remove_small_regions(img, min_size):
+def remove_small_regions(img, min_size, max_aspect_ratio=2.0):
     """
     Retourne une image dont on a enlevé les zones isolées.
 
     :param image: Matrice représentant l'image.
     :param min_size: threshold de la grandeur des zones à conserver
+    :param max_aspect_ratio: maximum aspect ratio allowed for regions
     """
 
     img = img.astype(np.uint8)
@@ -377,8 +377,8 @@ def remove_small_regions(img, min_size):
     # Trouver les composants connectés
     _, labels, stats, _ = cv2.connectedComponentsWithStats(img_opened, connectivity=8)
 
-    # Identifier les régions à conserver
-    valid_regions = stats[:, 4] >= min_size
+    # Identifier les régions à conserver en fonction de la taille et de l'aspect ratio
+    valid_regions = np.logical_and(stats[:, 4] >= min_size, stats[:, 2] / stats[:, 3] <= max_aspect_ratio)
 
     # Créer une image résultante avec les régions valides
     img_result = np.zeros_like(img)
@@ -391,54 +391,48 @@ def remove_small_regions(img, min_size):
     return img_result
 
 
-def detect_markers(image):
-    # Implementation for marker detection
-    # Your code here
-    pass
 
-
-def main():
+def detect_markers_using_topology(adjacency_tree):
     """
-    Ce programme permet de détecter des marqueurs topologiques dans une série d'images à partir d'une librairie de marqueurs.
+    Detect markers based on the topological information from the adjacency tree.
+
+    :param adjacency_tree: The adjacency tree of a segmented image.
+    :return: List of markers with their properties.
     """
 
-    # Specify the directory where your images are located
-    detection_dir = "detection/detection/"
+    markers = []
+
+    for region_id, region in adjacency_tree.items():
+        # Check if the region has marker-like properties
+        # You might want to customize these conditions based on your specific markers
+        if len(region.children) == 2 and region.parent is None:
+            # Assuming markers have exactly two children and no parent
+            markers.append({
+                'marker_id': region_id,
+                'position': region.pixels[0],  # Consider the position of the first pixel as the marker's position
+                'orientation': None  # You may need to calculate orientation based on the children's positions
+            })
+
+    return markers
+
+
+def generate_markers(output_dir):
     librairie_dir = "librairie2/librairie2/"
-
-    # Specify the directory where to store images
-    output_dir = "images_resultats/"
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Load all image files in the directories
-    print("----------------- LOADING IMAGES -----------------")
-
-    img_detection = loadImages(detection_dir)
-    print("Detections images are loaded")
 
     img_librairie = loadImages(librairie_dir)
     print("Librairie images are loaded")
-
-    plotImages(
-        img_detection,
-        img_librairie,
-        output_dir,
-    )
-
-    print("Loading done")
-
     # Segment the library images into two classes by mixing Gaussians
     print("----------------- SEGMENTATION OF LIBRARY IMAGES -----------------")
 
     binary_images = []
     for i, image in enumerate(img_librairie):
         binary_image = gaussian_mixture_segmentation(image)
-        processed_img = remove_small_regions(binary_image, 100)
+        processed_img = remove_small_regions(binary_image, 1000)
         binary_images.append(processed_img)
         print(f"Segmentation of image {i} done")
 
     plot_binary_images(
-        binary_images, os.path.join(output_dir, "combined_binary_images.png")
+        binary_images, os.path.join(output_dir, "markers_binary_images.png")
     )
 
     # pour en faire 1 à la fois
@@ -463,8 +457,8 @@ def main():
         regions_images.append(image_region)
         print(f"Adjacency tree of image {i} done")
 
-    plot_region_images(regions_images, os.path.join(output_dir, "combined_regions.png"))
-    plot_trees(adjacency_trees, os.path.join(output_dir, "combined_trees.png"))
+    plot_region_images(regions_images, os.path.join(output_dir, "markers_regions.png"))
+    plot_trees(adjacency_trees, os.path.join(output_dir, "markers_trees.png"))
 
     # pour en faire 1 a la fois
 
@@ -478,24 +472,72 @@ def main():
 
     # plot_tree(adjacency_tree, os.path.join(output_dir, "combined_trees.png"))
 
+
+def main():
+    """
+    Ce programme permet de détecter des marqueurs topologiques dans une série d'images à partir d'une librairie de marqueurs.
+    """
+
+    # Specify the directory where to store images
+    output_dir = "images_resultats/"
+    os.makedirs(output_dir, exist_ok=True)
+
+    #This is to generate the adjency tree and binary images of the markers
+    print("----------------- GENERATE MARKERS -----------------")
+    # generate_markers(output_dir)
+
+    # Specify the directory where your images are located
+    detection_dir = "detection/detection/"
+
+    # Load all image files in the directories
+    print("----------------- LOADING IMAGES -----------------")
+
+    img_detection = loadImages(detection_dir)
+    print("Detections images are loaded")
+
+# #TODO Fix here
+#     plotImages(
+#         img_detection,
+#         img_librairie,
+#         output_dir,
+#     )
+
+#     print("Loading done")
+
+
     # segment the detection images acquired by mixing Gaussians into two classes
     print("----------------- SEGMENTATION OF DETECTION IMAGES -----------------")
-    # for i, image in enumerate(img_detection):
-    #     binary_image = gaussian_mixture_segmentation(image)
-    #     plot_binary_image(binary_image, os.path.join(output_dir, f"binary_image_{i}"))
+    detection_binary_images = []
+    for i, image in enumerate(img_detection):
+        binary_image = gaussian_mixture_segmentation(image)
+        
+        processed_img = remove_small_regions(binary_image, 200)
+        detection_binary_images.append(processed_img)
+        print(f"Segmentation of image {i} done")
+
+    plot_binary_images(
+        detection_binary_images, os.path.join(output_dir, "detection_binary_images.png")
+    )
 
     # create the topological representation of the five library markers
     print("----------------- COMPLETE LIBRARY IMAGE TOPOLOGY -----------------")
-    # complete_library_topology = generate_adjacency_trees(
-    #     img_librairie
-    # )  # Assuming you choose the first image
-    # plot_trees(complete_library_topology, output_dir)
+    detection_adjacency_trees = []
+    detection_regions_images = []
+
+    for i, image in enumerate(detection_binary_images):
+        adjacency_tree, image_region = build_adjacency_tree(image)
+        detection_adjacency_trees.append(adjacency_tree)
+        detection_regions_images.append(image_region)
+        print(f"Adjacency tree of image {i} done")
+
+    plot_region_images(detection_regions_images, os.path.join(output_dir, "detection_regions.png"))
+    plot_trees(detection_adjacency_trees, os.path.join(output_dir, "detection_trees.png"))
 
     # detect the markers using topology trees
     print("----------------- DETECT MARKERS -----------------")
-    # for i, image in enumerate(img_detection):
-    #     markers_info = detect_markers(image)
-    #     print(f"Markers info for detection image {i + 1}: {markers_info}")
+    for i, adjacency_tree in enumerate(detection_adjacency_trees):
+        markers_info = detect_markers_using_topology(adjacency_tree)
+        print(f"Markers info for detection image {i + 1}: {markers_info}")
 
     # Lorsqu'il est question de détection, on souhaite obtenir l'identifiant du marqueur (chiffre 1 à 5) de même
     # que la position et l'orientation de celui-ci sur l'image.
