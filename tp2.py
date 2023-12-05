@@ -12,7 +12,6 @@ def loadImages(dir):
     Load toutes les images jpeg d'un directory dans un array
 
     :param dir: path du directory.
-    test
     """
 
     images_array = []
@@ -162,7 +161,7 @@ def plot_trees(trees, output_path):
         plt.title(f"Adjacency Tree for Image {i}")
 
     plt.tight_layout()
-    plt.savefig(os.path.join(output_path, "combined_trees.png"))
+    plt.savefig(os.path.join(output_path))
     plt.show()
 
 
@@ -459,12 +458,12 @@ def main():
     regions_images = []
 
     for i, image in enumerate(binary_images):
-        adjacency_tree, image_region = build_adjacency_tree(processed_img)
+        adjacency_tree, image_region = build_adjacency_tree(image)
         adjacency_trees.append(adjacency_tree)
         regions_images.append(image_region)
         print(f"Adjacency tree of image {i} done")
 
-    plot_region_images(adjacency_tree, os.path.join(output_dir, "combined_regions.png"))
+    plot_region_images(regions_images, os.path.join(output_dir, "combined_regions.png"))
     plot_trees(adjacency_trees, os.path.join(output_dir, "combined_trees.png"))
 
     # pour en faire 1 a la fois
