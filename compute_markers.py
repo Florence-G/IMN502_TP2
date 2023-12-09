@@ -44,7 +44,7 @@ def main():
     regions_images = []
 
     for i, image in enumerate(binary_images):
-        adjacency_tree, image_region = build_adjacency_tree(image)
+        adjacency_tree, image_region = build_adjacency_tree(image, 200)
         adjacency_trees.append(adjacency_tree)
         regions_images.append(image_region)
         save_adjacency_tree_to_json(

@@ -24,16 +24,15 @@ def main():
     plotImages(img_detection, os.path.join(output_dir, "images_detection.png"))
 
     print("----------------- SEGMENTATION OF DETECTION IMAGES -----------------")
-    save_dir = "binary_images/"
-    os.makedirs(save_dir, exist_ok=True)
 
     detection_binary_images = []
-    random = [40, 40, 40, 40, 20, 20, 40, 40]
     for i, image in enumerate(img_detection):
-        binary_image = gaussian_mixture_segmentation(image, random=random[i])
+        binary_image = gaussian_mixture_segmentation(image, random=40)
         processed_img = remove_small_regions(binary_image, 200)
+        # inverser manuellement les images
+        if i == 0 or i == 3:
+            processed_img = 255 - processed_img
         detection_binary_images.append(processed_img)
-        save_binary_image(processed_img, os.path.join(save_dir, f"binary_image{i}.png"))
         print(f"Segmentation of image {i} done")
 
     plot_binary_images(

@@ -28,3 +28,8 @@ Ce fichier permet ensuite de détecter les marqueurs dans les images de détecti
 - /detection_trees : dossier contenant les arbres d'adjacence des images de détection sous forme de json
 - /librairy_trees : dossier contenant les arbres d'adjacence des marqueurs sous forme de json
 - /resultats : dossier contenant les figures et les résultats
+- /utils : contient les fonctions utiles pour les compute.py
+
+## Rapport
+
+Dans le dossier résultats, il y a un bref rapport en pdf qui explique les problèmes rencontrés ainsi que les solutions appliquées.

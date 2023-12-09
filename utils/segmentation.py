@@ -27,6 +27,17 @@ def gaussian_mixture_segmentation(image, random=70):
     return segmented_image
 
 
+def seuillage(image, seuil):
+    # Assurez-vous que l'image est en niveaux de gris (1 canal)
+    if len(image.shape) > 2:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Appliquer le seuillage
+    _, seuillee = cv2.threshold(image, seuil, 1, cv2.THRESH_BINARY)
+
+    return seuillee
+
+
 def remove_small_regions(img, min_size, max_aspect_ratio=2.0):
     """
     Retourne une image dont on a enlevé les zones isolées.
@@ -47,7 +58,8 @@ def remove_small_regions(img, min_size, max_aspect_ratio=2.0):
 
     # Identifier les régions à conserver en fonction de la taille et de l'aspect ratio
     valid_regions = np.logical_and(
-        stats[:, 4] >= min_size, stats[:, 2] / stats[:, 3] <= max_aspect_ratio
+        stats[:, 4] >= min_size,
+        stats[:, 2] / stats[:, 3] <= max_aspect_ratio,
     )
 
     # Créer une image résultante avec les régions valides

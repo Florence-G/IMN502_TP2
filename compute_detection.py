@@ -10,7 +10,6 @@ def main():
     Ce programme permet de détecter des marqueurs topologiques dans une série d'images à partir d'une librairie de marqueurs.
     """
 
-    # Specify the directory where to store images
     output_dir = "resultats/"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -22,32 +21,30 @@ def main():
     markers_trees = load_trees(markers_trees_dir)
     print("Markers trees are loaded")
 
-    # plot_trees(markers_trees, "test.png")
-
     detection_trees_dir = "detection_trees/"
 
     detection_trees = load_trees(detection_trees_dir)
     print("Detections trees are loaded")
 
-    # plot_trees(detection_trees, "test2.png")
+    print("----------------- LOAD IMAGES -----------------")
 
-    print("----------------- LOAD BINARY IMAGES -----------------")
+    images_dir = "detection/detection"
+    images = loadImages(images_dir)
 
-    binary_images_dir = "binary_images/"
-    binary_images = load_binary_images(binary_images_dir)
-    # plot_binary_images(binary_images, "")
-
-    print("Binary images are loaded")
+    print("Images are loaded")
 
     print("----------------- COMPUTE DETECTION -----------------")
 
-    markers_infos = detect_markers_using_topology(markers_trees, detection_trees)
+    for i, detection_tree in enumerate(detection_trees):
+        if i >= 1:
+            markers_infos = detect_markers_using_topology(markers_trees, detection_tree)
 
-    print(markers_infos)
-
-    visualize_markers(binary_images[7], markers_infos)
-
-    # print(f"Markers info for detection image : {markers_info}")
+            visualize_markers(
+                images[i],
+                markers_infos,
+                os.path.join(output_dir, f"detection_finale_{i}.png"),
+            )
+    print("----------------- DETECTION COMPLETED -----------------")
 
 
 if __name__ == "__main__":

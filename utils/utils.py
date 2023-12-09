@@ -1,9 +1,9 @@
 import os
 import cv2
-import json
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
+import numpy as np
 
 
 def loadImages(dir):
@@ -118,46 +118,6 @@ def plot_region_images(region_images, output_path):
     plt.show()
 
 
-def save_binary_image(binary_image, output_path):
-    """
-    sauvegarde une image contenant les images binaires
-
-    :param binary_image: image binaire (0 et 255).
-    :param output_path: path pour sauvegarder l'image.
-    """
-    binary_image[binary_image == 1] = 255
-
-    binary_image = binary_image.astype("uint8")
-
-    cv2.imwrite(output_path, binary_image)
-
-
-def load_binary_images(dir):
-    """
-    load les images binaires d'un dossier
-
-    :param dir: dossier contenant les images
-    """
-    binary_images = []
-    for filename in os.listdir(dir):
-        if (
-            filename.endswith(".png")
-            or filename.endswith(".jpg")
-            or filename.endswith(".jpeg")
-        ):
-            # Utilisez cv2.imread pour charger l'image en niveau de gris (0 et 255)
-            image_path = os.path.join(dir, filename)
-            binary_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-
-            # Assurez-vous que l'image est binaire (0 et 1)
-            binary_image[binary_image > 0] = 1
-
-            # Ajoutez l'image à la liste
-            binary_images.append(binary_image)
-
-    return binary_images
-
-
 def plot_trees(trees, output_path):
     """
     Affiche et sauvegarde une figure contenant les arbres de toutes les images
@@ -214,4 +174,91 @@ def plot_trees(trees, output_path):
 
     plt.tight_layout()
     plt.savefig(os.path.join(output_path))
+    plt.show()
+
+
+def get_neighbors(position, size=10):
+    """
+    Renvoie les positions des voisins dans un carré de taille spécifiée autour de la position donnée.
+
+    :param position: Tuple contenant les coordonnées (x, y) de la position.
+    :param size: Taille du carré autour de la position.
+    :return: Liste de tuples contenant les positions des voisins.
+    """
+    x, y = position
+    neighbors = []
+
+    for i in range(-size // 2, size // 2 + 1):
+        for j in range(-size // 2, size // 2 + 1):
+            neighbors.append((x + i, y + j))
+
+    return neighbors
+
+
+def visualize_markers(image, marker_data, output_path):
+    """
+    Visualise les marqueurs avec leurs positions et couleurs associées.
+
+    :param marker_data: Liste de dictionnaires contenant les données des marqueurs.
+    """
+
+    color_mapping = {
+        0: [1, 0, 0],  # Rouge
+        1: [0, 1, 0],  # Vert
+        2: [0, 0, 1],  # Bleu
+        3: [0, 1, 1],  # Cyan
+        4: [1, 0, 1],  # Magenta
+    }
+
+    image[image == 1] = 255
+
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    plt.figure(figsize=(12, 8))
+
+    for marker in marker_data:
+        marker_id = marker["marker_id"]
+        position = tuple(map(int, marker["position"]))
+        color = color_mapping.get(marker_id, [1, 1, 1])
+
+        image_rgb[position] = np.array(color) * 255
+
+        for neighbor_position in get_neighbors(position, 30):
+            x, y = map(int, neighbor_position)
+            image_rgb[x, y] = np.array(color) * 255
+
+        # Ajouter une flèche au graphique
+        orientation = marker.get("orientation", 0)
+
+        # Tracer la flèche
+        plt.arrow(
+            position[1],
+            position[0],
+            orientation[1] - position[1],
+            orientation[0] - position[0],
+            color=color,
+            head_width=30,
+            head_length=30,
+        )
+
+    # Afficher l'image
+    plt.imshow(image_rgb / 255.0)  # Scale to [0, 1] range
+    plt.title("Visualisation des marqueurs")
+
+    # Créer une légende
+    legend_labels = [f"Marker {marker_id}" for marker_id in color_mapping.keys()]
+    legend_colors = list(color_mapping.values())
+
+    plt.legend(
+        handles=[
+            plt.Line2D(
+                [0], [0], marker="o", color="w", markerfacecolor=color, markersize=10
+            )
+            for color in legend_colors
+        ],
+        labels=legend_labels,
+        loc="upper left",
+        bbox_to_anchor=(1, 1),
+    )
+
+    plt.savefig(output_path)
     plt.show()

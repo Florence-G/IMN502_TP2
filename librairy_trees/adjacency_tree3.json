@@ -92,14 +92,5 @@
     ],
     "parent": 7,
     "children": []
-  },
-  "10": {
-    "color": 0,
-    "barycentre": [
-      1003,
-      1179
-    ],
-    "parent": 2,
-    "children": []
   }
 }

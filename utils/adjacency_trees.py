@@ -4,6 +4,11 @@ import os
 
 
 def load_trees(dir):
+    """
+    Construit les arbres d'adjacence à partir de fichiers JSON.
+
+    :param dir: path des json.
+    """
     trees = []
     for filename in sorted(os.listdir(dir)):
         if filename.endswith(".json"):
@@ -64,6 +69,12 @@ class PixelRegion:
     def add_child(self, child):
         self.children.append(child)
 
+    def remove_child(self, child):
+        if child in self.children:
+            self.children.remove(child)
+        else:
+            print(f"{child} not found in the list of children.")
+
     def update_barycentre(self, x, y):
         if self.pixel_count == 0:
             self.barycentre = (x, y)
@@ -110,6 +121,7 @@ def flood_fill(
     visited_color,
     adjacency_tree,
     image_regions,
+    seuil=None,
 ):
     """
     Remplit une région dans une image en utilisant la méthode de remplissage par pile.
@@ -147,8 +159,10 @@ def flood_fill(
                         # Mettre à jour la relation parent-enfant si le pixel est déjà visité
                         parent_id = image_regions[x, y]
                         adjacency_tree[region].set_parent(parent_id)
-                        if region not in adjacency_tree[parent_id].get_children():
-                            adjacency_tree[parent_id].add_child(region)
+
+                        if parent_id in adjacency_tree:
+                            if region not in adjacency_tree[parent_id].get_children():
+                                adjacency_tree[parent_id].add_child(region)
             continue
 
         # Ignorer les pixels qui ne sont pas de la couleur actuelle
@@ -171,9 +185,28 @@ def flood_fill(
                 if dx == 0 and dy == 0:  # position du pixel courant
                     continue
                 stack.append((x + dx, y + dy))  # positions des voisins
+    if seuil:
+        if cpt <= seuil:
+            image_regions[image_regions == region] = 0
+
+            # enlever si c'est un parent d,une région
+            parent_id = adjacency_tree[region].get_parent()
+
+            # Retirer la région de la liste des enfants de son parent
+            if parent_id is not None:
+                if parent_id in adjacency_tree:
+                    parent = adjacency_tree[parent_id]
+                    parent.remove_child(region)
+
+            # enlever si c'est un parent d'une région
+            if adjacency_tree[region].get_children():
+                for child_id in adjacency_tree[region].get_children():
+                    adjacency_tree[child_id].set_parent(None)
+
+            del adjacency_tree[region]
 
 
-def build_adjacency_tree(image):
+def build_adjacency_tree(image, seuil=None):
     """
     Construit un arbre d'adjacence à partir d'une image binaire.
 
@@ -201,6 +234,7 @@ def build_adjacency_tree(image):
                     -1,
                     adjacency_tree,
                     image_regions,
+                    seuil,
                 )
 
                 # fin de la région actuelle

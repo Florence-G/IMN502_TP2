@@ -70,24 +70,6 @@
     "parent": 3,
     "children": []
   },
-  "7": {
-    "color": 0,
-    "barycentre": [
-      663.5,
-      1080.5
-    ],
-    "parent": 5,
-    "children": []
-  },
-  "8": {
-    "color": 0,
-    "barycentre": [
-      695.5961538461542,
-      731.2692307692307
-    ],
-    "parent": 2,
-    "children": []
-  },
   "9": {
     "color": 1,
     "barycentre": [
@@ -105,15 +87,6 @@
       19,
       20
     ]
-  },
-  "10": {
-    "color": 0,
-    "barycentre": [
-      727.5,
-      705.0
-    ],
-    "parent": 2,
-    "children": []
   },
   "11": {
     "color": 1,
@@ -142,42 +115,6 @@
     "parent": 9,
     "children": []
   },
-  "14": {
-    "color": 0,
-    "barycentre": [
-      787.3414634146342,
-      911.0487804878048
-    ],
-    "parent": 9,
-    "children": []
-  },
-  "15": {
-    "color": 0,
-    "barycentre": [
-      841.2857142857143,
-      889.0
-    ],
-    "parent": 9,
-    "children": []
-  },
-  "16": {
-    "color": 0,
-    "barycentre": [
-      844,
-      886
-    ],
-    "parent": 9,
-    "children": []
-  },
-  "17": {
-    "color": 0,
-    "barycentre": [
-      848,
-      885
-    ],
-    "parent": 9,
-    "children": []
-  },
   "18": {
     "color": 0,
     "barycentre": [
@@ -194,33 +131,6 @@
       923.7206751054856
     ],
     "parent": 9,
-    "children": []
-  },
-  "20": {
-    "color": 0,
-    "barycentre": [
-      868.5,
-      893.0
-    ],
-    "parent": 9,
-    "children": []
-  },
-  "21": {
-    "color": 0,
-    "barycentre": [
-      1025.0,
-      981.0
-    ],
-    "parent": 2,
-    "children": []
-  },
-  "22": {
-    "color": 0,
-    "barycentre": [
-      1044,
-      1019
-    ],
-    "parent": 2,
     "children": []
   }
 }
